@@ -8,6 +8,7 @@ class TagController < ApplicationController
     @title = I18n.t('tag_controller.tags')
     @paginated = true
     @order_type = params[:order] == "desc" ? "asc" : "desc"
+    powertag_clause = params[:powertags] == 'true' ? '' : ['name NOT LIKE ?', '%:%']
 
     if params[:search]
       keyword = params[:search]
@@ -16,6 +17,7 @@ class TagController < ApplicationController
         .where('node.status = ?', 1)
         .where('community_tags.date > ?', (DateTime.now - 1.month).to_i)
         .where("name LIKE :keyword", keyword: "%#{keyword}%")
+        .where(powertag_clause)
         .group(:name)
         .order(order_string)
         .paginate(page: params[:page], per_page: 24)
@@ -24,6 +26,7 @@ class TagController < ApplicationController
         .select('node.nid, node.status, term_data.*, community_tags.*')
         .where('node.status = ?', 1)
         .where('community_tags.date > ?', (DateTime.now - 1.month).to_i)
+        .where(powertag_clause)
         .group(:name)
         .order(order_string)
         .paginate(page: params[:page], per_page: 24)
@@ -32,6 +35,7 @@ class TagController < ApplicationController
         .select('node.nid, node.status, term_data.*, community_tags.*')
         .where('node.status = ?', 1)
         .where('community_tags.date > ?', (DateTime.now - 1.month).to_i)
+        .where(powertag_clause)
         .group(:name)
         .order(order_string)
         .paginate(page: params[:page], per_page: 24)
@@ -40,6 +44,7 @@ class TagController < ApplicationController
         .select('node.nid, node.status, term_data.*, community_tags.*')
         .where('node.status = ?', 1)
         .where('community_tags.date > ?', (DateTime.now - 1.month).to_i)
+        .where(powertag_clause)
         .group(:name)
       raw_tags = Tag.sort_according_to_followers(raw_tags, params[:order])
       @tags = raw_tags.paginate(page: params[:page], per_page: 24)
@@ -48,6 +53,7 @@ class TagController < ApplicationController
         .select('node.nid, node.status, term_data.*, community_tags.*')
         .where('node.status = ?', 1)
         .where('community_tags.date > ?', (DateTime.now - 1.month).to_i)
+        .where(powertag_clause)
         .group(:name)
         .order(order_string)
 
@@ -67,8 +73,12 @@ class TagController < ApplicationController
   end
 
   def show
-    @wiki = Node.where(path: "/wiki/#{params[:id]}").try(:first) || Node.where(path: "/#{params[:id]}").try(:first)
-    @wiki = Node.where(slug: @wiki.power_tag('redirect'))&.first if @wiki&.has_power_tag('redirect') # use a redirected wiki page if it exists
+    if params[:id].is_a? Integer
+      @wiki = Node.find(params[:id])&.first
+    else
+      @wiki = Node.where(path: "/wiki/#{params[:id]}").try(:first) || Node.where(path: "/#{params[:id]}").try(:first)
+      @wiki = Node.where(slug: @wiki.power_tag('redirect'))&.first if @wiki&.has_power_tag('redirect') # use a redirected wiki page if it exists
+    end
 
     default_type = params[:id].match?('question:') ? 'questions' : 'note'
 
